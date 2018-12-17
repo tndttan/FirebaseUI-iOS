@@ -343,7 +343,7 @@ typedef void (^BestProviderQueryCallback)(id<FUIAuthProvider> _Nullable bestProv
 /** @fn anyProviderFromProviderIDs:exceptEmail:completion:
  @brief Looks for any provider from the given the array of provider ids that the user can use to sign in with.
  @param providerIDs Array of provider ids that the user can use to sign in with.
- @param exceptEmail Set this flag to true if email provider should be ignored.
+ @param isExceptEmail Set this flag to true if email provider should be ignored.
  @param completion The block to be executed on completion once the best provider is found. If none is found then
                    nil is passed to the completion block.
  */
