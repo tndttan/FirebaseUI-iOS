@@ -17,7 +17,7 @@
 //
 
 @import Firebase;
-@import FirebaseUI;
+#import <FirebaseUI/FirebaseUI.h>
 
 #import "FUIAuthViewController.h"
 #import "FUIAppDelegate.h"
@@ -43,7 +43,8 @@ NS_ENUM(NSUInteger, FIRProviders) {
   kIDPFacebook,
   kIDPTwitter,
   kIDPPhone,
-  kIDPAnonymous
+  kIDPAnonymous,
+  kIDPMicrosoft
 };
 
 static NSString *const kFirebaseTermsOfService = @"https://firebase.google.com/terms/";
@@ -53,6 +54,8 @@ static NSString *const kFirebasePrivacyPolicy = @"https://firebase.google.com/su
 @property (weak, nonatomic) IBOutlet UITableViewCell *cellSignIn;
 @property (weak, nonatomic) IBOutlet UITableViewCell *cellName;
 @property (weak, nonatomic) IBOutlet UITableViewCell *cellEmail;
+@property (weak, nonatomic) IBOutlet UISwitch *emailSwitch;
+@property (weak, nonatomic) IBOutlet UILabel *emailLabel;
 @property (weak, nonatomic) IBOutlet UITableViewCell *cellUID;
 @property (weak, nonatomic) IBOutlet UITableViewCell *anonymousSignIn;
 @property (weak, nonatomic) IBOutlet UIBarButtonItem *buttonAuthorization;
@@ -116,6 +119,10 @@ static NSString *const kFirebasePrivacyPolicy = @"https://firebase.google.com/su
                               animated:NO
                         scrollPosition:UITableViewScrollPositionNone];
   [self.tableView selectRowAtIndexPath:[NSIndexPath indexPathForRow:kIDPAnonymous
+                                                          inSection:kSectionsProviders]
+                              animated:NO
+                        scrollPosition:UITableViewScrollPositionNone];
+  [self.tableView selectRowAtIndexPath:[NSIndexPath indexPathForRow:kIDPMicrosoft
                                                           inSection:kSectionsProviders]
                               animated:NO
                         scrollPosition:UITableViewScrollPositionNone];
@@ -263,6 +270,14 @@ static NSString *const kFirebasePrivacyPolicy = @"https://firebase.google.com/su
   }
 }
 
+- (IBAction)onEmailSwitchValueChanged:(UISwitch *)sender {
+  if (sender.isOn) {
+    self.emailLabel.text = @"Password";
+  } else {
+    self.emailLabel.text = @"Link";
+  }
+}
+
 #pragma mark - FUIAuthDelegate methods
 
 // this method is called only when FUIAuthViewController is delgate of AuthUI
@@ -344,23 +359,15 @@ static NSString *const kFirebasePrivacyPolicy = @"https://firebase.google.com/su
 
 }
 
-+ (NSArray *)getAllIDPs {
-  NSArray<NSIndexPath *> *selectedRows = @[
-    [NSIndexPath indexPathForRow:kIDPEmail inSection:kSectionsProviders],
-    [NSIndexPath indexPathForRow:kIDPGoogle inSection:kSectionsProviders],
-    [NSIndexPath indexPathForRow:kIDPFacebook inSection:kSectionsProviders],
-    [NSIndexPath indexPathForRow:kIDPTwitter inSection:kSectionsProviders],
-    [NSIndexPath indexPathForRow:kIDPPhone inSection:kSectionsProviders],
-    [NSIndexPath indexPathForRow:kIDPAnonymous inSection:kSectionsProviders]
-  ];
-  return [self getListOfIDPs:selectedRows useCustomScopes:NO];
-}
-
 - (NSArray *)getListOfIDPs {
-  return [[self class] getListOfIDPs:[self.tableView indexPathsForSelectedRows] useCustomScopes:_customScopeSwitch.isOn];
+  return [[self class] getListOfIDPs:[self.tableView indexPathsForSelectedRows]
+                     useCustomScopes:_customScopeSwitch.isOn
+                        useEmailLink:_emailSwitch.isOn];
 }
 
-+ (NSArray *)getListOfIDPs:(NSArray<NSIndexPath *> *)selectedRows useCustomScopes:(BOOL)useCustomScopes {
++ (NSArray *)getListOfIDPs:(NSArray<NSIndexPath *> *)selectedRows
+           useCustomScopes:(BOOL)useCustomScopes
+              useEmailLink:(BOOL)useEmaiLink {
   NSMutableArray *providers = [NSMutableArray new];
 
   for (NSIndexPath *indexPath in selectedRows) {
@@ -368,7 +375,23 @@ static NSString *const kFirebasePrivacyPolicy = @"https://firebase.google.com/su
       id<FUIAuthProvider> provider;
       switch (indexPath.row) {
         case kIDPEmail:
-          provider = [[FUIEmailAuth alloc] init];
+          if (useEmaiLink) {
+            // ActionCodeSettings for email link sign-in.
+            FIRActionCodeSettings *actionCodeSettings = [[FIRActionCodeSettings alloc] init];
+            actionCodeSettings.URL = [NSURL URLWithString:@"https://fb-sa-1211.appspot.com"];
+            actionCodeSettings.handleCodeInApp = YES;
+            [actionCodeSettings setAndroidPackageName:@"com.firebase.uidemo"
+                                installIfNotAvailable:NO
+                                       minimumVersion:@"12"];
+
+            provider = [[FUIEmailAuth alloc] initAuthAuthUI:[FUIAuth defaultAuthUI]
+                                               signInMethod:FIREmailLinkAuthSignInMethod
+                                            forceSameDevice:NO
+                                      allowNewEmailAccounts:YES
+                                          actionCodeSetting:actionCodeSettings];
+          } else {
+            provider = [[FUIEmailAuth alloc] init];
+          }
           break;
         case kIDPGoogle:
           provider = useCustomScopes ? [[FUIGoogleAuth alloc] initWithScopes:@[kGoogleUserInfoEmailScope,
@@ -379,8 +402,8 @@ static NSString *const kFirebasePrivacyPolicy = @"https://firebase.google.com/su
           break;
         case kIDPFacebook:
           provider = useCustomScopes ? [[FUIFacebookAuth alloc] initWithPermissions:@[@"email",
-                                                                                        @"user_friends",
-                                                                                        @"ads_read"]]
+                                                                                      @"user_friends",
+                                                                                      @"ads_read"]]
                                      :[[FUIFacebookAuth alloc] init];
           break;
         case kIDPTwitter:
@@ -392,7 +415,23 @@ static NSString *const kFirebasePrivacyPolicy = @"https://firebase.google.com/su
         case kIDPAnonymous:
           provider = [[FUIAnonymousAuth alloc] initWithAuthUI:[FUIAuth defaultAuthUI]];
           break;
-
+        case kIDPMicrosoft:
+          {
+            UIColor *buttonColor = [UIColor colorWithRed:.18 green:.18 blue:.18 alpha:1.0];
+            NSString *iconPath = [[NSBundle mainBundle] pathForResource:@"mssymbol" ofType:@"png"];
+            if (!iconPath) {
+              NSLog(@"Warning: Unable to find microsoft icon.");
+            }
+            provider = [[FUIOAuth alloc] initWithAuthUI:[FUIAuth defaultAuthUI]
+                                             providerID:@"microsoft.com"
+                                        buttonLabelText:@"Sign in with Microsoft"
+                                              shortName:@"Microsoft"
+                                            buttonColor:buttonColor
+                                              iconImage:[UIImage imageWithContentsOfFile:iconPath]
+                                                 scopes:@[@"user.readwrite"]
+                                       customParameters:@{@"prompt" : @"consent"}];
+          }
+          break;
         default:
           break;
       }
