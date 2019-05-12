@@ -68,7 +68,13 @@
 "ChoosePassword" = "Välj lösenord";
 
 /* Text linked to a web page with the Terms of Service content. */
-"TermsOfService" = "användarvillkoren";
+"TermsOfService" = "Användarvillkor";
+
+/* Text linked to a web page with the Privacy Policy content. */
+"PrivacyPolicy" = "Sekretesspolicy";
+
+/* A message displayed when the first log in screen is displayed. The first placeholder is the terms of service agreement link, the second place holder is the privacy policy agreement link. */
+"TermsOfServiceMessage" = "Genom att fortsätta godkänner du våra %@ och vår %@.";
 
 /* Text linked to a web page with the Privacy Policy content. */
 "PrivacyPolicy" = "Sekretesspolicy";
